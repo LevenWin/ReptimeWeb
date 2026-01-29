@@ -200,60 +200,74 @@ function App() {
 
   if (!authed) {
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-4">
-        <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900/60 p-6 shadow-2xl">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-slate-800 flex items-center justify-center">
-              <LogIn className="h-5 w-5 text-slate-200" />
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold">分享邀请管理后台</h1>
-              <p className="text-sm text-slate-400">
-                请输入 Admin Token 登录
-              </p>
-            </div>
-          </div>
-
-          <form
-            className="mt-6 space-y-4"
-            onSubmit={(event) => {
-              event.preventDefault()
-              handleLogin(tokenInput)
-            }}
-          >
-            <div>
-              <label className="text-sm text-slate-300">Admin Token</label>
-              <input
-                type="password"
-                value={tokenInput}
-                onChange={(event) => setTokenInput(event.target.value)}
-                placeholder="输入 Token"
-                className="mt-2 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600"
-              />
-            </div>
-
-            {error && (
-              <div className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
-                {error}
+      <div className="relative min-h-screen overflow-hidden bg-slate-950 text-slate-100">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-indigo-500/20 blur-3xl" />
+          <div className="absolute right-0 top-32 h-80 w-80 rounded-full bg-cyan-400/20 blur-3xl" />
+          <div className="absolute bottom-0 left-1/2 h-64 w-64 -translate-x-1/2 rounded-full bg-fuchsia-500/20 blur-3xl" />
+        </div>
+        <div className="relative flex min-h-screen items-center justify-center px-4">
+          <div className="w-full max-w-md rounded-3xl border border-slate-800/70 bg-slate-900/60 p-7 shadow-2xl backdrop-blur">
+            <div className="flex items-center gap-3">
+              <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-indigo-500/30 to-cyan-400/30 p-[1px]">
+                <div className="flex h-full w-full items-center justify-center rounded-2xl bg-slate-950/80">
+                  <LogIn className="h-5 w-5 text-slate-200" />
+                </div>
               </div>
-            )}
+              <div>
+                <h1 className="text-lg font-semibold">分享邀请管理后台</h1>
+                <p className="text-sm text-slate-400">
+                  请输入 Admin Token 登录
+                </p>
+              </div>
+            </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-lg bg-white/95 text-slate-900 py-2 text-sm font-semibold hover:bg-white disabled:cursor-not-allowed disabled:opacity-70"
+            <form
+              className="mt-6 space-y-4"
+              onSubmit={(event) => {
+                event.preventDefault()
+                handleLogin(tokenInput)
+              }}
             >
-              {loading ? '验证中...' : '登录管理后台'}
-            </button>
-          </form>
+              <div>
+                <label className="text-sm text-slate-300">Admin Token</label>
+                <input
+                  type="password"
+                  value={tokenInput}
+                  onChange={(event) => setTokenInput(event.target.value)}
+                  placeholder="输入 Token"
+                  className="mt-2 w-full rounded-xl border border-slate-700/70 bg-slate-950/80 px-3 py-2.5 text-sm text-slate-100 shadow-inner outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+                />
+              </div>
+
+              {error && (
+                <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full rounded-xl bg-gradient-to-r from-indigo-400 via-cyan-300 to-fuchsia-400 py-2.5 text-sm font-semibold text-slate-900 shadow-lg shadow-cyan-500/20 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {loading ? '验证中...' : '登录管理后台'}
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100">
-      <div className="mx-auto max-w-6xl px-4 py-8">
+    <div className="relative min-h-screen overflow-hidden bg-slate-950 text-slate-100">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute -left-40 top-16 h-80 w-80 rounded-full bg-indigo-500/15 blur-3xl" />
+        <div className="absolute right-0 top-40 h-96 w-96 rounded-full bg-cyan-400/15 blur-3xl" />
+        <div className="absolute bottom-0 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-fuchsia-500/15 blur-3xl" />
+      </div>
+      <div className="relative mx-auto max-w-6xl px-4 py-8">
         <header className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h1 className="text-2xl font-semibold">分享邀请管理</h1>
@@ -269,26 +283,26 @@ function App() {
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="搜索昵称或分享码"
-                className="w-full rounded-lg border border-slate-800 bg-slate-900/60 py-2 pl-9 pr-3 text-sm text-slate-100 outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600"
+                className="w-full rounded-xl border border-slate-800/70 bg-slate-900/70 py-2.5 pl-9 pr-3 text-sm text-slate-100 shadow-inner outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
               />
             </div>
             <button
               onClick={handleRefresh}
-              className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-800 bg-slate-900/60 px-3 py-2 text-sm hover:border-slate-600"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-800/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-200 transition hover:border-cyan-400/50 hover:text-white"
             >
               <RefreshCcw className="h-4 w-4" />
               刷新
             </button>
             <button
               onClick={() => setImportOpen(true)}
-              className="inline-flex items-center justify-center gap-2 rounded-lg bg-white/95 px-3 py-2 text-sm font-semibold text-slate-900 hover:bg-white"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-400 via-cyan-300 to-fuchsia-400 px-3 py-2 text-sm font-semibold text-slate-900 shadow-lg shadow-cyan-500/20 transition hover:brightness-110"
             >
               <UploadCloud className="h-4 w-4" />
               导入兑换码
             </button>
             <button
               onClick={handleLogout}
-              className="inline-flex items-center justify-center gap-2 rounded-lg border border-slate-800 bg-transparent px-3 py-2 text-sm text-slate-200 hover:border-slate-600"
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-800/70 bg-transparent px-3 py-2 text-sm text-slate-300 transition hover:border-slate-500 hover:text-white"
             >
               <LogOut className="h-4 w-4" />
               退出
@@ -297,19 +311,19 @@ function App() {
         </header>
 
         {notice && (
-          <div className="mt-4 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-200">
+          <div className="mt-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2 text-sm text-emerald-200">
             {notice}
           </div>
         )}
 
         {error && (
-          <div className="mt-4 rounded-lg border border-rose-500/40 bg-rose-500/10 px-4 py-2 text-sm text-rose-200">
+          <div className="mt-4 rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-2 text-sm text-rose-200">
             {error}
           </div>
         )}
 
-        <div className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/40">
-          <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
+        <div className="mt-6 rounded-3xl border border-slate-800/70 bg-slate-900/50 shadow-xl backdrop-blur">
+          <div className="flex items-center justify-between border-b border-slate-800/70 px-4 py-3">
             <div className="text-sm text-slate-400">
               共 {filteredItems.length} 条记录
             </div>
@@ -323,7 +337,7 @@ function App() {
 
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
-              <thead className="bg-slate-900/70 text-slate-400">
+              <thead className="bg-slate-900/80 text-slate-400">
                 <tr>
                   <th className="px-4 py-3 text-left font-medium">推荐人</th>
                   <th className="px-4 py-3 text-left font-medium">被推荐人</th>
@@ -332,7 +346,7 @@ function App() {
                   <th className="px-4 py-3 text-left font-medium">时间</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody className="divide-y divide-slate-800/70">
                 {!loading && filteredItems.length === 0 && (
                   <tr>
                     <td
@@ -349,10 +363,13 @@ function App() {
                   const referrerAvatar = getAvatar(item, 'referrer')
                   const referredAvatar = getAvatar(item, 'referred')
                   return (
-                    <tr key={`${item.share_code ?? 'row'}-${index}`}>
+                    <tr
+                      key={`${item.share_code ?? 'row'}-${index}`}
+                      className="transition hover:bg-slate-900/70"
+                    >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="h-9 w-9 overflow-hidden rounded-full border border-slate-700 bg-slate-800">
+                          <div className="h-9 w-9 overflow-hidden rounded-full border border-slate-700/80 bg-slate-800">
                             {referrerAvatar ? (
                               <img
                                 src={referrerAvatar}
@@ -370,7 +387,7 @@ function App() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="h-9 w-9 overflow-hidden rounded-full border border-slate-700 bg-slate-800">
+                          <div className="h-9 w-9 overflow-hidden rounded-full border border-slate-700/80 bg-slate-800">
                             {referredAvatar ? (
                               <img
                                 src={referredAvatar}
@@ -386,10 +403,10 @@ function App() {
                           <span className="text-slate-100">{referredName}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 font-mono text-xs text-slate-200">
+                      <td className="px-4 py-3 font-mono text-xs text-cyan-200/90">
                         {item.share_code ?? '-'}
                       </td>
-                      <td className="px-4 py-3 font-mono text-xs text-slate-200">
+                      <td className="px-4 py-3 font-mono text-xs text-fuchsia-200/90">
                         {item.reward_code ?? '-'}
                       </td>
                       <td className="px-4 py-3 text-slate-300">
@@ -406,8 +423,11 @@ function App() {
 
       {importOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setImportOpen(false)} />
-          <div className="relative w-full max-w-lg rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl">
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setImportOpen(false)}
+          />
+          <div className="relative w-full max-w-lg rounded-3xl border border-slate-800/70 bg-slate-900/80 p-6 shadow-2xl backdrop-blur">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold">导入兑换码</h2>
@@ -428,7 +448,7 @@ function App() {
               onChange={(event) => setImportText(event.target.value)}
               rows={8}
               placeholder="code-001&#10;code-002&#10;code-003"
-              className="mt-4 w-full rounded-lg border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600"
+              className="mt-4 w-full rounded-xl border border-slate-700/70 bg-slate-950/80 px-3 py-2 text-sm text-slate-100 shadow-inner outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
             />
 
             <div className="mt-4 flex items-center justify-between text-xs text-slate-400">
@@ -444,14 +464,14 @@ function App() {
             <div className="mt-5 flex justify-end gap-3">
               <button
                 onClick={() => setImportOpen(false)}
-                className="rounded-lg border border-slate-800 px-4 py-2 text-sm text-slate-200 hover:border-slate-600"
+                className="rounded-xl border border-slate-800/70 px-4 py-2 text-sm text-slate-200 transition hover:border-slate-500"
               >
                 取消
               </button>
               <button
                 onClick={handleImport}
                 disabled={importLoading}
-                className="rounded-lg bg-white/95 px-4 py-2 text-sm font-semibold text-slate-900 hover:bg-white disabled:cursor-not-allowed disabled:opacity-70"
+                className="rounded-xl bg-gradient-to-r from-indigo-400 via-cyan-300 to-fuchsia-400 px-4 py-2 text-sm font-semibold text-slate-900 shadow-lg shadow-cyan-500/20 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 提交导入
               </button>
