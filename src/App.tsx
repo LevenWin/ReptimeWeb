@@ -19,23 +19,15 @@ const STATS_URL =
   'https://jrudysuexokhmfrqeiaw.supabase.co/functions/v1/reward-codes-stats'
 const TOKEN_KEY = 'admin_token'
 
-type UserInfo = {
-  nickname?: string
-  name?: string
-  avatar_url?: string
-  avatar?: string
-}
-
 type ReferralItem = {
   share_code?: string
   reward_code?: string
-  created_at?: string
-  referrer?: UserInfo
-  referred?: UserInfo
-  referrer_nickname?: string
-  referred_nickname?: string
-  referrer_avatar?: string
-  referred_avatar?: string
+  reward_owner?: string
+  referral_created_at?: string
+  referrer?: string
+  referred?: string
+  referrer_avatar_url?: string
+  referred_avatar_url?: string
 }
 
 type RewardCodeItem = {
@@ -56,18 +48,13 @@ type RewardStats = {
 }
 
 const getName = (item: ReferralItem, type: 'referrer' | 'referred') => {
-  const directKey = type === 'referrer' ? 'referrer_nickname' : 'referred_nickname'
-  return (
-    item[type]?.nickname ||
-    item[type]?.name ||
-    item[directKey] ||
-    '未知用户'
-  )
+  return type === 'referrer' ? item.referrer || '未知用户' : item.referred || '未知用户'
 }
 
 const getAvatar = (item: ReferralItem, type: 'referrer' | 'referred') => {
-  const directKey = type === 'referrer' ? 'referrer_avatar' : 'referred_avatar'
-  return item[type]?.avatar_url || item[type]?.avatar || item[directKey] || ''
+  return type === 'referrer'
+    ? item.referrer_avatar_url || ''
+    : item.referred_avatar_url || ''
 }
 
 const getInitial = (name: string) =>
@@ -100,6 +87,7 @@ async function fetchReferrals(adminToken: string) {
   console.log('[referrals] response', data)
   if (Array.isArray(data)) return data as ReferralItem[]
   if (Array.isArray(data?.data)) return data.data as ReferralItem[]
+  if (Array.isArray(data?.rows)) return data.rows as ReferralItem[]
   return []
 }
 
@@ -134,10 +122,12 @@ function App() {
       const referrer = getName(item, 'referrer').toLowerCase()
       const referred = getName(item, 'referred').toLowerCase()
       const shareCode = item.share_code?.toLowerCase() ?? ''
+      const rewardOwner = item.reward_owner?.toLowerCase() ?? ''
       return (
         referrer.includes(keyword) ||
         referred.includes(keyword) ||
-        shareCode.includes(keyword)
+        shareCode.includes(keyword) ||
+        rewardOwner.includes(keyword)
       )
     })
   }, [items, search])
@@ -260,8 +250,19 @@ function App() {
         data?: RewardStats
       }
       const payload = (raw?.data ?? raw) as RewardStats
-      console.log('[stats] response', payload)
-      setStats(payload)
+      const normalized: RewardStats = {
+        summary: payload.summary,
+        used: payload.used ?? [],
+        unused: payload.unused ?? [],
+      }
+      if (normalized.used.length === 0 && normalized.unused.length > 0) {
+        const used = normalized.unused.filter((item) => item.used_at)
+        const unused = normalized.unused.filter((item) => !item.used_at)
+        normalized.used = used
+        normalized.unused = unused
+      }
+      console.log('[stats] response', normalized)
+      setStats(normalized)
     } catch {
       setError('获取兑换码统计失败，请检查 Token')
     } finally {
@@ -481,6 +482,7 @@ function App() {
                   <th className="px-4 py-3 text-left font-medium">被推荐人</th>
                   <th className="px-4 py-3 text-left font-medium">分享码</th>
                   <th className="px-4 py-3 text-left font-medium">奖励码</th>
+                  <th className="px-4 py-3 text-left font-medium">奖励码归属</th>
                   <th className="px-4 py-3 text-left font-medium">时间</th>
                 </tr>
               </thead>
@@ -488,7 +490,7 @@ function App() {
                 {!loading && filteredItems.length === 0 && (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={6}
                       className="px-4 py-8 text-center text-slate-400"
                     >
                       暂无数据
@@ -547,8 +549,11 @@ function App() {
                       <td className="px-4 py-3 font-mono text-xs text-blue-200/90">
                         {item.reward_code ?? '-'}
                       </td>
+                      <td className="px-4 py-3 text-xs text-slate-300">
+                        {item.reward_owner ?? '-'}
+                      </td>
                       <td className="px-4 py-3 text-slate-300">
-                        {formatDate(item.created_at)}
+                        {formatDate(item.referral_created_at)}
                       </td>
                     </tr>
                   )
