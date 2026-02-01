@@ -17,7 +17,10 @@ const IMPORT_URL =
   'https://jrudysuexokhmfrqeiaw.supabase.co/functions/v1/reward-codes-import'
 const STATS_URL =
   'https://jrudysuexokhmfrqeiaw.supabase.co/functions/v1/reward-codes-stats'
+const PUSH_URL =
+  'https://jrudysuexokhmfrqeiaw.supabase.co/functions/v1/push-admin'
 const TOKEN_KEY = 'admin_token'
+const PUSH_HISTORY_KEY = 'push_history'
 
 type ReferralItem = {
   share_code?: string
@@ -45,6 +48,17 @@ type RewardStats = {
   }
   used: RewardCodeItem[]
   unused: RewardCodeItem[]
+}
+
+type PushHistoryItem = {
+  id: string
+  mode: 'username' | 'token'
+  username?: string
+  push_token?: string
+  apnsEnv?: 'sandbox' | 'production'
+  title: string
+  message: string
+  created_at: string
 }
 
 const getName = (item: ReferralItem, type: 'referrer' | 'referred') => {
@@ -102,6 +116,16 @@ function App() {
   const [importOpen, setImportOpen] = useState(false)
   const [importText, setImportText] = useState('')
   const [importLoading, setImportLoading] = useState(false)
+  const [pushOpen, setPushOpen] = useState(false)
+  const [pushMode, setPushMode] = useState<'username' | 'token'>('username')
+  const [pushTitle, setPushTitle] = useState('')
+  const [pushMessage, setPushMessage] = useState('')
+  const [pushUsername, setPushUsername] = useState('')
+  const [pushToken, setPushToken] = useState('')
+  const [pushEnv, setPushEnv] = useState<'sandbox' | 'production'>('sandbox')
+  const [pushLoading, setPushLoading] = useState(false)
+  const [pushHistory, setPushHistory] = useState<PushHistoryItem[]>([])
+  const [pushNotice, setPushNotice] = useState('')
   const [statsOpen, setStatsOpen] = useState(false)
   const [statsLoading, setStatsLoading] = useState(false)
   const [stats, setStats] = useState<RewardStats | null>(null)
@@ -113,6 +137,19 @@ function App() {
     setTokenInput(token)
     handleLogin(token, true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    const stored = localStorage.getItem(PUSH_HISTORY_KEY)
+    if (!stored) return
+    try {
+      const parsed = JSON.parse(stored) as PushHistoryItem[]
+      if (Array.isArray(parsed)) {
+        setPushHistory(parsed)
+      }
+    } catch {
+      // ignore invalid history
+    }
   }, [])
 
   const filteredItems = useMemo(() => {
@@ -224,6 +261,82 @@ function App() {
       setNotice('导入失败，请检查 Token 或网络')
     } finally {
       setImportLoading(false)
+    }
+  }
+
+  const handlePush = async () => {
+    if (!token) return
+    if (!pushTitle.trim() || !pushMessage.trim()) {
+      setPushNotice('请填写推送标题和内容')
+      return
+    }
+    if (pushMode === 'username' && !pushUsername.trim()) {
+      setPushNotice('请填写用户名')
+      return
+    }
+    if (pushMode === 'token' && !pushToken.trim()) {
+      setPushNotice('请填写 Push Token')
+      return
+    }
+
+    setPushLoading(true)
+    setPushNotice('')
+    const payload =
+      pushMode === 'username'
+        ? {
+            username: pushUsername.trim(),
+            title: pushTitle.trim(),
+            message: pushMessage.trim(),
+            apnsEnv: pushEnv,
+          }
+        : {
+            push_token: pushToken.trim(),
+            title: pushTitle.trim(),
+            message: pushMessage.trim(),
+            apnsEnv: pushEnv,
+          }
+
+    try {
+      console.log('[push] payload', payload)
+      const response = await fetch(PUSH_URL, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'X-Admin-Token': token,
+        },
+        body: JSON.stringify(payload),
+      })
+      console.log('[push] status', response.status)
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '')
+        console.warn('[push] error', errorText)
+        throw new Error('PUSH_FAILED')
+      }
+      const data = await response.json().catch(() => null)
+      console.log('[push] response', data)
+      const newItem: PushHistoryItem = {
+        id: `${Date.now()}`,
+        mode: pushMode,
+        username: pushMode === 'username' ? pushUsername.trim() : undefined,
+        push_token: pushMode === 'token' ? pushToken.trim() : undefined,
+        apnsEnv: pushEnv,
+        title: pushTitle.trim(),
+        message: pushMessage.trim(),
+        created_at: new Date().toISOString(),
+      }
+      const nextHistory = [newItem, ...pushHistory].slice(0, 20)
+      setPushHistory(nextHistory)
+      localStorage.setItem(PUSH_HISTORY_KEY, JSON.stringify(nextHistory))
+
+      setPushTitle('')
+      setPushMessage('')
+      setPushUsername('')
+      setPushToken('')
+      setPushNotice('推送已发送')
+    } catch {
+      setPushNotice('推送失败，请检查参数或 Token')
+    } finally {
+      setPushLoading(false)
     }
   }
 
@@ -400,6 +513,15 @@ function App() {
         <div className="absolute bottom-0 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-blue-500/15 blur-3xl" />
       </div>
       <div className="relative mx-auto max-w-6xl px-4 py-8">
+        <div className="mb-4 flex justify-end">
+          <button
+            onClick={() => setPushOpen(true)}
+            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-800/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-200 transition hover:border-cyan-400/50 hover:text-white"
+          >
+            <Loader2 className="h-4 w-4" />
+            推送通知
+          </button>
+        </div>
         <header className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h1 className="text-2xl font-semibold">分享邀请管理</h1>
@@ -619,6 +741,173 @@ function App() {
                 提交导入
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {pushOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setPushOpen(false)}
+          />
+          <div className="relative w-full max-w-lg rounded-3xl border border-slate-800/70 bg-slate-900/80 p-6 shadow-2xl backdrop-blur">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold">推送通知</h2>
+                <p className="text-xs text-slate-400">
+                  支持按用户名或 Push Token 发送
+                </p>
+              </div>
+              <button
+                className="rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:border-slate-500"
+                onClick={() => setPushOpen(false)}
+              >
+                关闭
+              </button>
+            </div>
+
+            <div className="mt-4 flex items-center gap-2 text-xs text-slate-400">
+              <button
+                onClick={() => setPushMode('username')}
+                className={`rounded-full px-3 py-1 ${
+                  pushMode === 'username'
+                    ? 'bg-cyan-300 text-slate-900'
+                    : 'border border-slate-700 text-slate-300'
+                }`}
+              >
+                按用户名
+              </button>
+              <button
+                onClick={() => setPushMode('token')}
+                className={`rounded-full px-3 py-1 ${
+                  pushMode === 'token'
+                    ? 'bg-cyan-300 text-slate-900'
+                    : 'border border-slate-700 text-slate-300'
+                }`}
+              >
+                按 Push Token
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {pushMode === 'username' ? (
+                <input
+                  value={pushUsername}
+                  onChange={(event) => setPushUsername(event.target.value)}
+                  placeholder="用户名"
+                  className="w-full rounded-xl border border-slate-700/70 bg-slate-950/80 px-3 py-2 text-sm text-slate-100 shadow-inner outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+                />
+              ) : (
+                <input
+                  value={pushToken}
+                  onChange={(event) => setPushToken(event.target.value)}
+                  placeholder="Push Token"
+                  className="w-full rounded-xl border border-slate-700/70 bg-slate-950/80 px-3 py-2 text-sm text-slate-100 shadow-inner outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+                />
+              )}
+              <div className="flex items-center gap-2 text-xs text-slate-400">
+                <span>APNS 环境</span>
+                <button
+                  onClick={() => setPushEnv('sandbox')}
+                  className={`rounded-full px-3 py-1 ${
+                    pushEnv === 'sandbox'
+                      ? 'bg-cyan-300 text-slate-900'
+                      : 'border border-slate-700 text-slate-300'
+                  }`}
+                >
+                  sandbox
+                </button>
+                <button
+                  onClick={() => setPushEnv('production')}
+                  className={`rounded-full px-3 py-1 ${
+                    pushEnv === 'production'
+                      ? 'bg-cyan-300 text-slate-900'
+                      : 'border border-slate-700 text-slate-300'
+                  }`}
+                >
+                  production
+                </button>
+              </div>
+              <input
+                value={pushTitle}
+                onChange={(event) => setPushTitle(event.target.value)}
+                placeholder="标题"
+                className="w-full rounded-xl border border-slate-700/70 bg-slate-950/80 px-3 py-2 text-sm text-slate-100 shadow-inner outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+              />
+              <textarea
+                value={pushMessage}
+                onChange={(event) => setPushMessage(event.target.value)}
+                rows={4}
+                placeholder="内容"
+                className="w-full rounded-xl border border-slate-700/70 bg-slate-950/80 px-3 py-2 text-sm text-slate-100 shadow-inner outline-none transition focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+              />
+            </div>
+
+            {pushNotice && (
+              <div
+                className={`mt-4 rounded-xl border px-3 py-2 text-xs ${
+                  pushNotice.includes('成功')
+                    ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200'
+                    : 'border-rose-500/40 bg-rose-500/10 text-rose-200'
+                }`}
+              >
+                {pushNotice}
+              </div>
+            )}
+
+            <div className="mt-5 flex flex-col gap-3">
+              <button
+                onClick={handlePush}
+                disabled={pushLoading}
+                className="rounded-xl bg-gradient-to-r from-sky-300 via-cyan-300 to-blue-300 px-4 py-2 text-sm font-semibold text-slate-900 shadow-lg shadow-cyan-500/20 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-70"
+              >
+                {pushLoading ? '发送中...' : '发送推送'}
+              </button>
+              <button
+                onClick={() => setPushOpen(false)}
+                className="rounded-xl border border-slate-800/70 px-4 py-2 text-sm text-slate-200 transition hover:border-slate-500"
+              >
+                取消
+              </button>
+            </div>
+
+            {pushHistory.length > 0 && (
+              <div className="mt-5 rounded-2xl border border-slate-800/70 bg-slate-950/50 p-4">
+                <div className="mb-3 text-xs text-slate-400">最近推送</div>
+                <div className="space-y-2">
+                  {pushHistory.slice(0, 5).map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        setPushMode(item.mode)
+                        setPushTitle(item.title)
+                        setPushMessage(item.message)
+                        setPushUsername(item.username ?? '')
+                        setPushToken(item.push_token ?? '')
+                        setPushEnv(item.apnsEnv ?? 'sandbox')
+                      }}
+                      className="w-full rounded-xl border border-slate-800/70 bg-slate-900/60 px-3 py-2 text-left text-xs text-slate-200 transition hover:border-cyan-400/50"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="truncate font-medium">{item.title}</span>
+                        <span className="text-[10px] text-slate-500">
+                          {formatDate(item.created_at)}
+                        </span>
+                      </div>
+                      <div className="mt-1 line-clamp-2 text-[11px] text-slate-400">
+                        {item.message}
+                      </div>
+                      <div className="mt-1 text-[10px] text-slate-500">
+                        {item.mode === 'username'
+                          ? `username: ${item.username ?? '-'} (${item.apnsEnv ?? 'sandbox'})`
+                          : `token: ${item.push_token ?? '-'} (${item.apnsEnv ?? 'sandbox'})`}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
