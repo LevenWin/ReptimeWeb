@@ -19,6 +19,8 @@ const STATS_URL =
   'https://jrudysuexokhmfrqeiaw.supabase.co/functions/v1/reward-codes-stats'
 const PUSH_URL =
   'https://jrudysuexokhmfrqeiaw.supabase.co/functions/v1/push-admin'
+const PUSH_HISTORY_URL =
+  'https://jrudysuexokhmfrqeiaw.supabase.co/functions/v1/push-history'
 const TOKEN_KEY = 'admin_token'
 const PUSH_HISTORY_KEY = 'push_history'
 
@@ -59,6 +61,19 @@ type PushHistoryItem = {
   title: string
   message: string
   created_at: string
+}
+
+type PushRecordItem = {
+  user_id: string
+  username: string
+  avatar_url: string
+  push_token: string
+  title: string
+  theme: string
+  language: string
+  message: string
+  created_at: string
+  sent_at: string
 }
 
 const getName = (item: ReferralItem, type: 'referrer' | 'referred') => {
@@ -126,6 +141,9 @@ function App() {
   const [pushLoading, setPushLoading] = useState(false)
   const [pushHistory, setPushHistory] = useState<PushHistoryItem[]>([])
   const [pushNotice, setPushNotice] = useState('')
+  const [pushRecordsOpen, setPushRecordsOpen] = useState(false)
+  const [pushRecordsLoading, setPushRecordsLoading] = useState(false)
+  const [pushRecords, setPushRecords] = useState<PushRecordItem[]>([])
   const [statsOpen, setStatsOpen] = useState(false)
   const [statsLoading, setStatsLoading] = useState(false)
   const [stats, setStats] = useState<RewardStats | null>(null)
@@ -340,6 +358,44 @@ function App() {
     }
   }
 
+  const fetchPushRecords = async () => {
+    if (!token) return
+    setPushRecordsLoading(true)
+    setError('')
+    try {
+      console.log('[push-history] request', PUSH_HISTORY_URL)
+      const response = await fetch(PUSH_HISTORY_URL, {
+        headers: {
+          'X-Admin-Token': token,
+        },
+      })
+      console.log('[push-history] status', response.status)
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '')
+        console.warn('[push-history] error', errorText)
+        throw new Error('PUSH_HISTORY_FAILED')
+      }
+      const data = (await response.json()) as {
+        data?: { rows?: PushRecordItem[] }
+        rows?: PushRecordItem[]
+      }
+      const rows = data?.data?.rows ?? data?.rows ?? []
+      console.log('[push-history] response', rows)
+      setPushRecords(rows)
+    } catch {
+      setError('获取推送记录失败，请检查 Token')
+    } finally {
+      setPushRecordsLoading(false)
+    }
+  }
+
+  const handleOpenPushRecords = async () => {
+    if (!token) return
+    setPushRecordsOpen(true)
+    if (pushRecords.length > 0) return
+    fetchPushRecords()
+  }
+
   const fetchStats = async () => {
     if (!token) return
     setStatsLoading(true)
@@ -513,15 +569,6 @@ function App() {
         <div className="absolute bottom-0 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-blue-500/15 blur-3xl" />
       </div>
       <div className="relative mx-auto max-w-6xl px-4 py-8">
-        <div className="mb-4 flex justify-end">
-          <button
-            onClick={() => setPushOpen(true)}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-800/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-200 transition hover:border-cyan-400/50 hover:text-white"
-          >
-            <Loader2 className="h-4 w-4" />
-            推送通知
-          </button>
-        </div>
         <header className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <h1 className="text-2xl font-semibold">分享邀请管理</h1>
@@ -560,6 +607,13 @@ function App() {
             >
               <Database className="h-4 w-4" />
               兑换码统计
+            </button>
+            <button
+              onClick={handleOpenPushRecords}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-800/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-200 transition hover:border-cyan-400/50 hover:text-white"
+            >
+              <Database className="h-4 w-4" />
+              推送记录
             </button>
             <button
               onClick={handleLogout}
@@ -1038,6 +1092,137 @@ function App() {
                         </td>
                       </tr>
                     )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {pushRecordsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setPushRecordsOpen(false)}
+          />
+          <div className="relative w-full max-w-6xl rounded-3xl border border-slate-800/70 bg-slate-900/80 p-6 shadow-2xl backdrop-blur">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold">推送记录</h2>
+                <p className="text-xs text-slate-400">
+                  查看已发送推送的历史记录
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setPushRecordsOpen(false)
+                    setPushOpen(true)
+                  }}
+                  className="rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:border-slate-500"
+                >
+                  推送通知
+                </button>
+                <button
+                  className="rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:border-slate-500"
+                  onClick={fetchPushRecords}
+                >
+                  刷新
+                </button>
+                <button
+                  className="rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:border-slate-500"
+                  onClick={() => setPushRecordsOpen(false)}
+                >
+                  关闭
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-4 flex items-center gap-2 text-xs text-slate-400">
+              {pushRecordsLoading && (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  加载中...
+                </span>
+              )}
+              {!pushRecordsLoading && (
+                <span>共 {pushRecords.length} 条记录</span>
+              )}
+            </div>
+
+            <div className="mt-4 max-h-[520px] overflow-auto rounded-2xl border border-slate-800/70">
+              <table className="min-w-full text-sm">
+                <thead className="bg-slate-900/80 text-slate-400">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-medium">用户</th>
+                    <th className="px-4 py-3 text-left font-medium">标题</th>
+                    <th className="px-4 py-3 text-left font-medium">主题</th>
+                    <th className="px-4 py-3 text-left font-medium">语言</th>
+                    <th className="px-4 py-3 text-left font-medium">消息</th>
+                    <th className="px-4 py-3 text-left font-medium">创建时间</th>
+                    <th className="px-4 py-3 text-left font-medium">发送时间</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/70">
+                  {pushRecords.map((item) => (
+                    <tr key={`${item.user_id}-${item.created_at}`}>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 overflow-hidden rounded-full border border-slate-700/80 bg-slate-800">
+                            {item.avatar_url ? (
+                              <img
+                                src={item.avatar_url}
+                                alt={item.username || '用户'}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-[10px] text-slate-300">
+                                {getInitial(item.username || 'U')}
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <div className="text-slate-100">
+                              {item.username || '-'}
+                            </div>
+                            <div className="text-[10px] text-slate-500">
+                              {item.user_id || '-'}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-slate-200">
+                        {item.title || '-'}
+                      </td>
+                      <td className="px-4 py-3 text-slate-300">
+                        {item.theme || '-'}
+                      </td>
+                      <td className="px-4 py-3 text-slate-300">
+                        {item.language || '-'}
+                      </td>
+                      <td className="px-4 py-3 text-slate-300">
+                        <div className="max-w-xs truncate">
+                          {item.message || '-'}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-slate-300">
+                        {formatDate(item.created_at)}
+                      </td>
+                      <td className="px-4 py-3 text-slate-300">
+                        {formatDate(item.sent_at)}
+                      </td>
+                    </tr>
+                  ))}
+                  {!pushRecordsLoading && pushRecords.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={7}
+                        className="px-4 py-6 text-center text-slate-400"
+                      >
+                        暂无数据
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
