@@ -74,6 +74,9 @@ type PushRecordItem = {
   theme: string
   language: string
   message: string
+  status?: string
+  error_reason?: string
+  error_status?: string
   created_at: string
   sent_at: string
 }
@@ -1222,6 +1225,8 @@ function App() {
                     <th className="px-4 py-3 text-left font-medium">主题</th>
                     <th className="px-4 py-3 text-left font-medium">语言</th>
                     <th className="px-4 py-3 text-left font-medium">消息</th>
+                    <th className="px-4 py-3 text-left font-medium">状态</th>
+                    <th className="px-4 py-3 text-left font-medium">失败原因</th>
                     <th className="px-4 py-3 text-left font-medium">创建时间</th>
                     <th className="px-4 py-3 text-left font-medium">发送时间</th>
                   </tr>
@@ -1268,6 +1273,28 @@ function App() {
                           {item.message || '-'}
                         </div>
                       </td>
+                      <td className="px-4 py-3 text-xs">
+                        <span
+                          className={`rounded-full px-2 py-1 ${
+                            item.status === 'sent'
+                              ? 'bg-emerald-500/15 text-emerald-200'
+                              : item.status === 'failed'
+                                ? 'bg-rose-500/15 text-rose-200'
+                                : 'bg-slate-500/10 text-slate-300'
+                          }`}
+                        >
+                          {item.status || '-'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-slate-300">
+                        <div className="max-w-xs text-xs">
+                          {item.error_reason
+                            ? `${item.error_reason}${
+                                item.error_status ? ` (${item.error_status})` : ''
+                              }`
+                            : '-'}
+                        </div>
+                      </td>
                       <td className="px-4 py-3 text-slate-300">
                         {formatDate(item.created_at)}
                       </td>
@@ -1279,7 +1306,7 @@ function App() {
                   {!pushRecordsLoading && pushRecords.length === 0 && (
                     <tr>
                       <td
-                        colSpan={7}
+                        colSpan={9}
                         className="px-4 py-6 text-center text-slate-400"
                       >
                         暂无数据
