@@ -21,6 +21,8 @@ const PUSH_URL =
   'https://jrudysuexokhmfrqeiaw.supabase.co/functions/v1/push-admin'
 const PUSH_HISTORY_URL =
   'https://jrudysuexokhmfrqeiaw.supabase.co/functions/v1/push-history'
+const FEEDBACK_URL =
+  'https://jrudysuexokhmfrqeiaw.supabase.co/functions/v1/feedback-admin'
 const TOKEN_KEY = 'admin_token'
 const PUSH_HISTORY_KEY = 'push_history'
 
@@ -74,6 +76,20 @@ type PushRecordItem = {
   message: string
   created_at: string
   sent_at: string
+}
+
+type FeedbackProfile = {
+  nickname?: string
+  avatar_url?: string
+  username?: string
+}
+
+type FeedbackItem = {
+  id: string
+  external_user_id: string
+  content: string
+  created_at: string
+  profile?: FeedbackProfile
 }
 
 const getName = (item: ReferralItem, type: 'referrer' | 'referred') => {
@@ -144,6 +160,9 @@ function App() {
   const [pushRecordsOpen, setPushRecordsOpen] = useState(false)
   const [pushRecordsLoading, setPushRecordsLoading] = useState(false)
   const [pushRecords, setPushRecords] = useState<PushRecordItem[]>([])
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [feedbackLoading, setFeedbackLoading] = useState(false)
+  const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([])
   const [statsOpen, setStatsOpen] = useState(false)
   const [statsLoading, setStatsLoading] = useState(false)
   const [stats, setStats] = useState<RewardStats | null>(null)
@@ -389,6 +408,43 @@ function App() {
     }
   }
 
+  const fetchFeedbacks = async () => {
+    if (!token) return
+    setFeedbackLoading(true)
+    setError('')
+    try {
+      console.log('[feedback] request', FEEDBACK_URL)
+      const response = await fetch(FEEDBACK_URL, {
+        headers: {
+          'X-Admin-Token': token,
+        },
+      })
+      console.log('[feedback] status', response.status)
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '')
+        console.warn('[feedback] error', errorText)
+        throw new Error('FEEDBACK_FAILED')
+      }
+      const data = (await response.json()) as {
+        data?: { feedbacks?: FeedbackItem[] }
+      }
+      const rows = data?.data?.feedbacks ?? []
+      console.log('[feedback] response', rows)
+      setFeedbacks(rows)
+    } catch {
+      setError('获取反馈列表失败，请检查 Token')
+    } finally {
+      setFeedbackLoading(false)
+    }
+  }
+
+  const handleOpenFeedback = async () => {
+    if (!token) return
+    setFeedbackOpen(true)
+    if (feedbacks.length > 0) return
+    fetchFeedbacks()
+  }
+
   const handleOpenPushRecords = async () => {
     if (!token) return
     setPushRecordsOpen(true)
@@ -614,6 +670,13 @@ function App() {
             >
               <Database className="h-4 w-4" />
               推送记录
+            </button>
+            <button
+              onClick={handleOpenFeedback}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-800/70 bg-slate-900/60 px-3 py-2 text-sm text-slate-200 transition hover:border-cyan-400/50 hover:text-white"
+            >
+              <Database className="h-4 w-4" />
+              反馈列表
             </button>
             <button
               onClick={handleLogout}
@@ -1217,6 +1280,116 @@ function App() {
                     <tr>
                       <td
                         colSpan={7}
+                        className="px-4 py-6 text-center text-slate-400"
+                      >
+                        暂无数据
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {feedbackOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div
+            className="absolute inset-0 bg-black/60"
+            onClick={() => setFeedbackOpen(false)}
+          />
+          <div className="relative w-full max-w-5xl rounded-3xl border border-slate-800/70 bg-slate-900/80 p-6 shadow-2xl backdrop-blur">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold">管理员反馈列表</h2>
+                <p className="text-xs text-slate-400">
+                  查看用户提交的反馈内容
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  className="rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:border-slate-500"
+                  onClick={fetchFeedbacks}
+                >
+                  刷新
+                </button>
+                <button
+                  className="rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:border-slate-500"
+                  onClick={() => setFeedbackOpen(false)}
+                >
+                  关闭
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-4 flex items-center gap-2 text-xs text-slate-400">
+              {feedbackLoading && (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  加载中...
+                </span>
+              )}
+              {!feedbackLoading && <span>共 {feedbacks.length} 条反馈</span>}
+            </div>
+
+            <div className="mt-4 max-h-[520px] overflow-auto rounded-2xl border border-slate-800/70">
+              <table className="min-w-full text-sm">
+                <thead className="bg-slate-900/80 text-slate-400">
+                  <tr>
+                    <th className="px-4 py-3 text-left font-medium">用户</th>
+                    <th className="px-4 py-3 text-left font-medium">内容</th>
+                    <th className="px-4 py-3 text-left font-medium">时间</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/70">
+                  {feedbacks.map((item) => (
+                    <tr key={item.id}>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 overflow-hidden rounded-full border border-slate-700/80 bg-slate-800">
+                            {item.profile?.avatar_url ? (
+                              <img
+                                src={item.profile.avatar_url}
+                                alt={item.profile.nickname || '用户'}
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-[10px] text-slate-300">
+                                {getInitial(
+                                  item.profile?.nickname ||
+                                    item.profile?.username ||
+                                    'U',
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <div className="text-slate-100">
+                              {item.profile?.nickname ||
+                                item.profile?.username ||
+                                '-'}
+                            </div>
+                            <div className="text-[10px] text-slate-500">
+                              {item.external_user_id}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-slate-300">
+                        <div className="max-w-xl whitespace-pre-wrap">
+                          {item.content}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-slate-300">
+                        {formatDate(item.created_at)}
+                      </td>
+                    </tr>
+                  ))}
+                  {!feedbackLoading && feedbacks.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={3}
                         className="px-4 py-6 text-center text-slate-400"
                       >
                         暂无数据
