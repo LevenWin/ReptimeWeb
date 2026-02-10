@@ -163,6 +163,9 @@ function App() {
   const [pushRecordsOpen, setPushRecordsOpen] = useState(false)
   const [pushRecordsLoading, setPushRecordsLoading] = useState(false)
   const [pushRecords, setPushRecords] = useState<PushRecordItem[]>([])
+  const [pushRecordsExpanded, setPushRecordsExpanded] = useState<
+    Record<string, boolean>
+  >({})
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [feedbackLoading, setFeedbackLoading] = useState(false)
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([])
@@ -208,6 +211,34 @@ function App() {
       )
     })
   }, [items, search])
+
+  const pushRecordGroups = useMemo(() => {
+    const groups: Record<string, PushRecordItem[]> = {}
+    pushRecords.forEach((item) => {
+      if (!item.sent_at) return
+      const key = item.sent_at.slice(0, 10)
+      if (!groups[key]) groups[key] = []
+      groups[key].push(item)
+    })
+    const entries = Object.entries(groups)
+    entries.sort(([a], [b]) => {
+      if (a === '未发送') return -1
+      if (b === '未发送') return 1
+      return b.localeCompare(a)
+    })
+    return entries
+  }, [pushRecords])
+
+  useEffect(() => {
+    if (pushRecordGroups.length === 0) return
+    setPushRecordsExpanded((prev) => {
+      const next = { ...prev }
+      pushRecordGroups.forEach(([key]) => {
+        if (next[key] === undefined) next[key] = true
+      })
+      return next
+    })
+  }, [pushRecordGroups])
 
   const handleLogin = async (value: string, silent = false) => {
     const adminToken = value.trim()
@@ -1216,105 +1247,137 @@ function App() {
               )}
             </div>
 
-            <div className="mt-4 max-h-[520px] overflow-auto rounded-2xl border border-slate-800/70">
-              <table className="min-w-full text-sm">
-                <thead className="bg-slate-900/80 text-slate-400">
-                  <tr>
-                    <th className="px-4 py-3 text-left font-medium">用户</th>
-                    <th className="px-4 py-3 text-left font-medium">标题</th>
-                    <th className="px-4 py-3 text-left font-medium">主题</th>
-                    <th className="px-4 py-3 text-left font-medium">语言</th>
-                    <th className="px-4 py-3 text-left font-medium">消息</th>
-                    <th className="px-4 py-3 text-left font-medium">状态</th>
-                    <th className="px-4 py-3 text-left font-medium">失败原因</th>
-                    <th className="px-4 py-3 text-left font-medium">创建时间</th>
-                    <th className="px-4 py-3 text-left font-medium">发送时间</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/70">
-                  {pushRecords.map((item) => (
-                    <tr key={`${item.user_id}-${item.created_at}`}>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 overflow-hidden rounded-full border border-slate-700/80 bg-slate-800">
-                            {item.avatar_url ? (
-                              <img
-                                src={item.avatar_url}
-                                alt={item.username || '用户'}
-                                className="h-full w-full object-cover"
-                              />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center text-[10px] text-slate-300">
-                                {getInitial(item.username || 'U')}
-                              </div>
-                            )}
-                          </div>
-                          <div>
-                            <div className="text-slate-100">
-                              {item.username || '-'}
-                            </div>
-                            <div className="text-[10px] text-slate-500">
-                              {item.user_id || '-'}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-slate-200">
-                        {item.title || '-'}
-                      </td>
-                      <td className="px-4 py-3 text-slate-300">
-                        {item.theme || '-'}
-                      </td>
-                      <td className="px-4 py-3 text-slate-300">
-                        {item.language || '-'}
-                      </td>
-                      <td className="px-4 py-3 text-slate-300">
-                        <div className="max-w-xs truncate">
-                          {item.message || '-'}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-xs">
-                        <span
-                          className={`rounded-full px-2 py-1 ${
-                            item.status === 'sent'
-                              ? 'bg-emerald-500/15 text-emerald-200'
-                              : item.status === 'failed'
-                                ? 'bg-rose-500/15 text-rose-200'
-                                : 'bg-slate-500/10 text-slate-300'
-                          }`}
-                        >
-                          {item.status || '-'}
+            <div className="mt-4 max-h-[520px] space-y-3 overflow-auto">
+              {!pushRecordsLoading && pushRecordGroups.length === 0 && (
+                <div className="rounded-2xl border border-slate-800/70 px-4 py-6 text-center text-sm text-slate-400">
+                  暂无数据
+                </div>
+              )}
+              {pushRecordGroups.map(([groupKey, records]) => {
+                const isOpen = pushRecordsExpanded[groupKey] ?? true
+                return (
+                  <div
+                    key={groupKey}
+                    className="rounded-2xl border border-slate-800/70"
+                  >
+                    <button
+                      onClick={() =>
+                        setPushRecordsExpanded((prev) => ({
+                          ...prev,
+                          [groupKey]: !isOpen,
+                        }))
+                      }
+                      className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm text-slate-200"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-400">推送时间</span>
+                        <span className="font-medium">
+                          {groupKey === '未发送'
+                            ? `未发送（${records.length}）`
+                            : `${groupKey}（${records.length}）`}
                         </span>
-                      </td>
-                      <td className="px-4 py-3 text-slate-300">
-                        <div className="max-w-xs text-xs">
-                          {item.error_reason
-                            ? `${item.error_reason}${
-                                item.error_status ? ` (${item.error_status})` : ''
-                              }`
-                            : '-'}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-slate-300">
-                        {formatDate(item.created_at)}
-                      </td>
-                      <td className="px-4 py-3 text-slate-300">
-                        {formatDate(item.sent_at)}
-                      </td>
-                    </tr>
-                  ))}
-                  {!pushRecordsLoading && pushRecords.length === 0 && (
-                    <tr>
-                      <td
-                        colSpan={9}
-                        className="px-4 py-6 text-center text-slate-400"
-                      >
-                        暂无数据
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                      </div>
+                      <span className="text-xs text-slate-500">
+                        {isOpen ? '收起' : '展开'}
+                      </span>
+                    </button>
+                    {isOpen && (
+                      <div className="overflow-x-auto border-t border-slate-800/70">
+                        <table className="min-w-full text-sm">
+                          <thead className="bg-slate-900/80 text-slate-400">
+                            <tr>
+                              <th className="px-4 py-3 text-left font-medium">用户</th>
+                              <th className="px-4 py-3 text-left font-medium">标题</th>
+                              <th className="px-4 py-3 text-left font-medium">主题</th>
+                              <th className="px-4 py-3 text-left font-medium">语言</th>
+                              <th className="px-4 py-3 text-left font-medium">消息</th>
+                              <th className="px-4 py-3 text-left font-medium">状态</th>
+                              <th className="px-4 py-3 text-left font-medium">失败原因</th>
+                              <th className="px-4 py-3 text-left font-medium">创建时间</th>
+                              <th className="px-4 py-3 text-left font-medium">发送时间</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-800/70">
+                            {records.map((item) => (
+                              <tr key={`${item.user_id}-${item.created_at}`}>
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center gap-3">
+                                    <div className="h-8 w-8 overflow-hidden rounded-full border border-slate-700/80 bg-slate-800">
+                                      {item.avatar_url ? (
+                                        <img
+                                          src={item.avatar_url}
+                                          alt={item.username || '用户'}
+                                          className="h-full w-full object-cover"
+                                        />
+                                      ) : (
+                                        <div className="flex h-full w-full items-center justify-center text-[10px] text-slate-300">
+                                          {getInitial(item.username || 'U')}
+                                        </div>
+                                      )}
+                                    </div>
+                                    <div>
+                                      <div className="text-slate-100">
+                                        {item.username || '-'}
+                                      </div>
+                                      <div className="text-[10px] text-slate-500">
+                                        {item.user_id || '-'}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-slate-200">
+                                  {item.title || '-'}
+                                </td>
+                                <td className="px-4 py-3 text-slate-300">
+                                  {item.theme || '-'}
+                                </td>
+                                <td className="px-4 py-3 text-slate-300">
+                                  {item.language || '-'}
+                                </td>
+                                <td className="px-4 py-3 text-slate-300">
+                                  <div className="max-w-xs truncate">
+                                    {item.message || '-'}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-xs">
+                                  <span
+                                    className={`rounded-full px-2 py-1 ${
+                                      item.status === 'sent'
+                                        ? 'bg-emerald-500/15 text-emerald-200'
+                                        : item.status === 'failed'
+                                          ? 'bg-rose-500/15 text-rose-200'
+                                          : 'bg-slate-500/10 text-slate-300'
+                                    }`}
+                                  >
+                                    {item.status || '-'}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-slate-300">
+                                  <div className="max-w-xs text-xs">
+                                    {item.error_reason
+                                      ? `${item.error_reason}${
+                                          item.error_status
+                                            ? ` (${item.error_status})`
+                                            : ''
+                                        }`
+                                      : '-'}
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-slate-300">
+                                  {formatDate(item.created_at)}
+                                </td>
+                                <td className="px-4 py-3 text-slate-300">
+                                  {formatDate(item.sent_at)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </div>
         </div>
